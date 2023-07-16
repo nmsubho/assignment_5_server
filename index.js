@@ -59,7 +59,7 @@ const run = async () => {
       const whereConditions =
         andConditions.length > 0 ? { $and: andConditions } : {};
 
-      const cursor = bookCollection.find(whereConditions);
+      const cursor = bookCollection.find(whereConditions).sort({ _id: -1 });
       const book = await cursor.toArray();
 
       res.send({ status: true, data: book });
@@ -118,28 +118,51 @@ const run = async () => {
       });
     });
 
-    app.get("/publication-years", (req, res) => {
-      bookCollection.distinct("publicationDate", (err, publicationYears) => {
-        if (err) {
-          console.error(err);
-          res.status(500).send("Internal Server Error");
-        } else {
-          publicationYears = publicationYears?.map(
-            (publicationYear) => publicationYear?.split("-")[0]
-          );
+    // app.get("/publication-years", (req, res) => {
+    //   bookCollection.distinct("publicationDate", (err, publicationYears) => {
+    //     if (err) {
+    //       console.error(err);
+    //       res.status(500).send("Internal Server Error");
+    //     } else {
+    //       publicationYears = publicationYears?.map(
+    //         (publicationYear) => publicationYear?.split("-")[0]
+    //       );
 
-          res.json(publicationYears);
-        }
-      });
+    //       res.json(publicationYears);
+    //     }
+    //   });
+    // });
+
+    app.get("/publication-years", async (req, res) => {
+      try {
+        const uniqueYears = await bookCollection
+          .aggregate([
+            {
+              $group: {
+                _id: { $substr: ["$publicationDate", 0, 4] },
+              },
+            },
+            {
+              $sort: { _id: 1 },
+            },
+          ])
+          .toArray();
+
+        const yearList = uniqueYears.map((year) => year._id);
+        res.json(yearList);
+      } catch (error) {
+        console.error("Failed to retrieve unique years:", error);
+        res.status(500).json({ error: "Internal server error" });
+      }
     });
-
 
     app.post("/review/:id", async (req, res) => {
       const bookId = req.params.id;
       const review = req.body.review;
+      let result = null;
 
       try {
-        const result = await bookCollection.updateOne(
+        result = await bookCollection.updateOne(
           { _id: ObjectId(bookId) },
           { $push: { reviews: review } }
         );
