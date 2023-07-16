@@ -41,12 +41,18 @@ const run = async () => {
 
       if (Object.keys(filterData).length) {
         andConditions.push({
-          $and: Object.entries(filterData).map(([field, value]) => ({
-            [field]: {
-              $regex: "^" + value + "$",
-              $options: "i",
-            },
-          })),
+          $and: Object.entries(filterData).map(([field, value]) =>
+            field === "publicationYear"
+              ? {
+                  publicationDate: { $regex: `^${value}`, $options: "i" },
+                }
+              : {
+                  [field]: {
+                    $regex: "^" + value + "$",
+                    $options: "i",
+                  },
+                }
+          ),
         });
       }
 
@@ -100,6 +106,33 @@ const run = async () => {
       console.log(result);
       res.send(result);
     });
+
+    app.get("/genres", (req, res) => {
+      bookCollection.distinct("genre", (err, genres) => {
+        if (err) {
+          console.error(err);
+          res.status(500).send("Internal Server Error");
+        } else {
+          res.json(genres);
+        }
+      });
+    });
+
+    app.get("/publication-years", (req, res) => {
+      bookCollection.distinct("publicationDate", (err, publicationYears) => {
+        if (err) {
+          console.error(err);
+          res.status(500).send("Internal Server Error");
+        } else {
+          publicationYears = publicationYears?.map(
+            (publicationYear) => publicationYear?.split("-")[0]
+          );
+
+          res.json(publicationYears);
+        }
+      });
+    });
+
 
     app.post("/review/:id", async (req, res) => {
       const bookId = req.params.id;
