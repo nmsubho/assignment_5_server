@@ -22,7 +22,35 @@ const run = async () => {
     const bookCollection = db.collection("book");
 
     app.get("/books", async (req, res) => {
-      const cursor = bookCollection.find({});
+      const { searchTerm, ...filterData } = req.query;
+
+      const searchFields = ["title", "author", "genre", "publicationDate"];
+
+      const andConditions = [];
+
+      if (searchTerm) {
+        andConditions.push({
+          $or: searchFields.map((field) => ({
+            [field]: {
+              $regex: searchTerm,
+              $options: "i",
+            },
+          })),
+        });
+      }
+
+      if (Object.keys(filterData).length) {
+        andConditions.push({
+          $and: Object.entries(filterData).map(([field, value]) => ({
+            [field]: value,
+          })),
+        });
+      }
+
+      const whereConditions =
+        andConditions.length > 0 ? { $and: andConditions } : {};
+
+      const cursor = bookCollection.find(whereConditions);
       const book = await cursor.toArray();
 
       res.send({ status: true, data: book });
