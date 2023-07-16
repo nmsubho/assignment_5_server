@@ -46,6 +46,17 @@ const run = async () => {
       res.send(result);
     });
 
+    app.put("/book/:id", async (req, res) => {
+      const id = req.params.id;
+      const book = req.body;
+      const result = await bookCollection.findOneAndUpdate(
+        { _id: ObjectId(id) },
+        book
+      );
+      console.log(result);
+      res.send(result);
+    });
+
     app.delete("/book/:id", async (req, res) => {
       const id = req.params.id;
 
@@ -54,36 +65,36 @@ const run = async () => {
       res.send(result);
     });
 
-    app.post("/comment/:id", async (req, res) => {
+    app.post("/review/:id", async (req, res) => {
       const bookId = req.params.id;
-      const comment = req.body.comment;
+      const review = req.body.review;
 
       console.log(bookId);
-      console.log(comment);
+      console.log(review);
 
       const result = await bookCollection.updateOne(
         { _id: ObjectId(bookId) },
-        { $push: { comments: comment } }
+        { $push: { reviews: review } }
       );
 
       console.log(result);
 
       if (result.modifiedCount !== 1) {
-        console.error("Book not found or comment not added");
-        res.json({ error: "Book not found or comment not added" });
+        console.error("Book not found or review not added");
+        res.json({ error: "Book not found or review not added" });
         return;
       }
 
-      console.log("Comment added successfully");
-      res.json({ message: "Comment added successfully" });
+      console.log("Review added successfully");
+      res.json({ message: "Review added successfully" });
     });
 
-    app.get("/comment/:id", async (req, res) => {
+    app.get("/review/:id", async (req, res) => {
       const bookId = req.params.id;
 
       const result = await bookCollection.findOne(
         { _id: ObjectId(bookId) },
-        { projection: { _id: 0, comments: 1 } }
+        { projection: { _id: 0, reviews: 1 } }
       );
 
       if (result) {
