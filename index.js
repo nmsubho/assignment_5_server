@@ -49,12 +49,17 @@ const run = async () => {
     app.put("/book/:id", async (req, res) => {
       const id = req.params.id;
       const book = req.body;
-      const result = await bookCollection.findOneAndUpdate(
-        { _id: ObjectId(id) },
-        book
-      );
-      console.log(result);
-      res.send(result);
+
+      try {
+        const result = await bookCollection.findOneAndUpdate(
+          { _id: ObjectId(id) },
+          { $set: book }
+        );
+        console.log(result);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send(error.message);
+      }
     });
 
     app.delete("/book/:id", async (req, res) => {
@@ -69,15 +74,17 @@ const run = async () => {
       const bookId = req.params.id;
       const review = req.body.review;
 
-      console.log(bookId);
-      console.log(review);
+      try {
+        const result = await bookCollection.updateOne(
+          { _id: ObjectId(bookId) },
+          { $push: { reviews: review } }
+        );
 
-      const result = await bookCollection.updateOne(
-        { _id: ObjectId(bookId) },
-        { $push: { reviews: review } }
-      );
-
-      console.log(result);
+        console.log(result);
+      } catch (error) {
+        res.json({ error: "review not added" });
+        return;
+      }
 
       if (result.modifiedCount !== 1) {
         console.error("Book not found or review not added");
