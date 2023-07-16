@@ -42,7 +42,10 @@ const run = async () => {
       if (Object.keys(filterData).length) {
         andConditions.push({
           $and: Object.entries(filterData).map(([field, value]) => ({
-            [field]: value,
+            [field]: {
+              $regex: "^" + value + "$",
+              $options: "i",
+            },
           })),
         });
       }
