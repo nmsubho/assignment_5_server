@@ -20,6 +20,7 @@ const run = async () => {
   try {
     const db = client.db("tech-net");
     const bookCollection = db.collection("book");
+    const myListCollection = db.collection("mylist");
 
     app.get("/books", async (req, res) => {
       const { searchTerm, ...filterData } = req.query;
@@ -198,24 +199,82 @@ const run = async () => {
       }
     });
 
-    app.post("/user", async (req, res) => {
-      const user = req.body;
-
-      const result = await userCollection.insertOne(user);
-
-      res.send(result);
+    app.post("/myList/:list", async (req, res) => {
+      const data = req.body;
+      const list = req.params.list;
+      try {
+        if (list === "wishlist" || list === "reading" || list === "completed") {
+          const result = await myListCollection.insertOne({
+            ...data,
+            list,
+          });
+          res.send(result);
+        } else {
+          res.send({ status: false });
+        }
+      } catch (error) {
+        res.send({ status: false });
+      }
     });
 
-    app.get("/user/:email", async (req, res) => {
-      const email = req.params.email;
+    app.get("/myList", async (req, res) => {
+      const { list, uid } = req.query;
+      try {
+        if (list === "wishlist" || list === "reading" || list === "completed") {
+          const books = await myListCollection
+            .aggregate([
+              {
+                $match: { list, uid },
+              },
+              {
+                $lookup: {
+                  from: "book",
+                  let: { bookId: { $toObjectId: "$bookId" } }, // Convert bookId to ObjectId
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: { $eq: ["$_id", { $toObjectId: "$$bookId" }] }, // Perform the lookup using ObjectId
+                      },
+                    },
+                  ],
+                  as: "bookData",
+                },
+              },
+              {
+                $addFields: {
+                  book: { $arrayElemAt: ["$bookData", 0] },
+                },
+              },
+              {
+                $project: {
+                  uid: 0,
+                  bookId: 0,
+                  list: 0,
+                  bookData: 0,
+                },
+              },
+              {
+                $project: {
+                  "book._id": 1,
+                  "book.title": 1,
+                  "book.author": 1,
+                  "book.genre": 1,
+                  "book.publicationDate": 1,
+                  // "book.addedBy": 1,
+                },
+              },
+            ])
+            .sort({ _id: -1 })
+            .toArray();
 
-      const result = await userCollection.findOne({ email });
-
-      if (result?.email) {
-        return res.send({ status: true, data: result });
+          res.send({ status: true, data: books });
+        } else {
+          res.send({ status: false });
+        }
+      } catch (error) {
+        console.error(error);
+        res.send({ status: false });
       }
-
-      res.send({ status: false });
     });
   } finally {
   }
