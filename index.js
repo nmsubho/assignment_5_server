@@ -202,12 +202,20 @@ const run = async () => {
     app.post("/myList/:list", async (req, res) => {
       const data = req.body;
       const list = req.params.list;
+      let result = null;
       try {
         if (list === "wishlist" || list === "reading" || list === "completed") {
-          const result = await myListCollection.insertOne({
-            ...data,
-            list,
-          });
+          const exist = await myListCollection.findOne(data);
+          if (!exist) {
+            result = await myListCollection.insertOne({
+              ...data,
+              list,
+            });
+          } else {
+            exist.list = list;
+            exist.save();
+            res.send(exist);
+          }
           res.send(result);
         } else {
           res.send({ status: false });
