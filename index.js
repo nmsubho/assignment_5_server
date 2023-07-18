@@ -202,21 +202,26 @@ const run = async () => {
     app.post("/myList/:list", async (req, res) => {
       const data = req.body;
       const list = req.params.list;
-      let result = null;
+
       try {
         if (list === "wishlist" || list === "reading" || list === "completed") {
           const exist = await myListCollection.findOne(data);
+
           if (!exist) {
-            result = await myListCollection.insertOne({
+            const result = await myListCollection.insertOne({
               ...data,
               list,
             });
+            res.send(result);
           } else {
-            exist.list = list;
-            exist.save();
+            // Update the existing document in the collection
+            await myListCollection.updateOne(
+              { _id: exist._id },
+              { $set: { list } }
+            );
             res.send(exist);
+            return; // Terminate the function execution
           }
-          res.send(result);
         } else {
           res.send({ status: false });
         }
